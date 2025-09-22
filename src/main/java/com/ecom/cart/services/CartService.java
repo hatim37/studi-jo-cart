@@ -39,16 +39,13 @@ public class CartService {
     }
 
     public ResponseEntity<?> addCaddies(Long userId, List<AddProductInCartDto> addProductInCartDto) {
-        log.info("addCaddies debut");
         Order activeOrder = orderRestClient.findByUserIdAndOrderStatus("Bearer " + this.tokenTechnicService.getTechnicalToken(), Map.of("userId", String.valueOf(userId), "orderStatus", String.valueOf(OrderStatus.EnCours)));
         if (activeOrder.getId() == null) {
             throw new UserNotFoundException("Service indisponible order");
         }
 
-        log.info("addCaddies boucle");
         for (AddProductInCartDto dto : addProductInCartDto) {
 
-            log.info("addCaddies recherche produit");
             Product product = productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), dto.getProductId());
             if (product.getId() == null) {
                 throw new UserNotFoundException("Produit introuvable");
@@ -60,12 +57,11 @@ public class CartService {
             cartItems.setQuantity(dto.getQuantity());
             cartItems.setUserId(dto.getUserId());
 
-            log.info("addCaddies panier creer");
             cartRepository.save(cartItems);
             activeOrder.setTotalAmount(activeOrder.getTotalAmount() + cartItems.getPrice() * dto.getQuantity());
             activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * dto.getQuantity());
         }
-        log.info("addCaddies fin");
+
         return this.sendUpdateOrders(activeOrder);
     }
 
@@ -118,7 +114,67 @@ public class CartService {
         return orderDto;
     }
 
+    public ResponseEntity<?> addProductToCart(AddProductInCartDto addProductInCartDto) {
+        Order activeOrder = orderRestClient.findByUserIdAndOrderStatus("Bearer " + this.tokenTechnicService.getTechnicalToken(), Map.of("userId", String.valueOf(addProductInCartDto.getUserId()), "orderStatus", String.valueOf(OrderStatus.EnCours)));
+        if (activeOrder.getId() == null) {
+            throw new UserNotFoundException("Service indisponible order");
+        }
+        Optional<CartItems> optionalCartItems = cartRepository.findByProductIdAndOrderIdAndUserId
+                (addProductInCartDto.getProductId(), activeOrder.getId(), addProductInCartDto.getUserId());
 
+        if (optionalCartItems.isPresent() && Objects.equals(addProductInCartDto.getOption(), "add")) {
+
+            CartItems cartItems = cartRepository.findById(optionalCartItems.get().getId()).orElseThrow();
+            cartItems.setQuantity(cartItems.getQuantity() + addProductInCartDto.getQuantity());
+            cartRepository.save(cartItems);
+
+            activeOrder.setTotalAmount(activeOrder.getTotalAmount() + cartItems.getPrice() * addProductInCartDto.getQuantity());
+            activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * addProductInCartDto.getQuantity());
+
+            return this.sendUpdateOrders(activeOrder);
+
+        }
+        if (optionalCartItems.isPresent() && Objects.equals(addProductInCartDto.getOption(), "remove")) {
+            CartItems cartItems = cartRepository.findById(optionalCartItems.get().getId()).orElseThrow();
+            cartItems.setQuantity(cartItems.getQuantity() - addProductInCartDto.getQuantity());
+            cartRepository.save(cartItems);
+
+            activeOrder.setTotalAmount(activeOrder.getTotalAmount() - cartItems.getPrice() * addProductInCartDto.getQuantity());
+            activeOrder.setAmount(activeOrder.getAmount() - cartItems.getPrice() * addProductInCartDto.getQuantity());
+
+            return this.sendUpdateOrders(activeOrder);
+
+        } else {
+
+            Product optionalProduct = productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), addProductInCartDto.getProductId());
+            if (optionalProduct.getId() == null) {
+                throw new UserNotFoundException("Produit introuvable");
+            }
+
+            CartItems cartItems = new CartItems();
+            cartItems.setProductId(optionalProduct.getId());
+            cartItems.setOrderId(activeOrder.getId());
+            cartItems.setUserId(addProductInCartDto.getUserId());
+            cartItems.setPrice(optionalProduct.getPrice());
+            cartItems.setQuantity(addProductInCartDto.getQuantity());
+
+            cartRepository.save(cartItems);
+
+            activeOrder.setTotalAmount(activeOrder.getTotalAmount() + cartItems.getPrice() * addProductInCartDto.getQuantity());
+            activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * addProductInCartDto.getQuantity());
+
+            return this.sendUpdateOrders(activeOrder);
+
+        }
+    }
+
+    public boolean deleteCartById(Long id) {
+        Optional<CartItems> cartItems = cartRepository.findById(id);
+        if (cartItems.isPresent()) {
+            cartRepository.deleteById(id);
+            return true;
+        } return false;
+    }
 
 
 }

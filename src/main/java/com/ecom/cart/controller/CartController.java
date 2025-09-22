@@ -30,5 +30,17 @@ public class CartController {
         return ResponseEntity.status(HttpStatus.OK).body(orderDto);
     }
 
+    @PostMapping("/addCart")
+    public ResponseEntity<?> addProductToCart(@RequestBody AddProductInCartDto addProductInCartDto) {
+        return cartService.addProductToCart(addProductInCartDto);
+    }
+
+    @DeleteMapping("/delete-cart/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
+        boolean delete = cartService.deleteCartById(id);
+        if (delete) {
+            return ResponseEntity.noContent().build();
+        } return ResponseEntity.notFound().build();
+    }
 
 }
