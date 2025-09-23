@@ -43,4 +43,16 @@ public class CartController {
         } return ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/qrCode/{id}")
+    public ResponseEntity<?> getQrCodeById(@PathVariable Long id) {
+        CartItemsDto cartItemsDtoDto = cartService.getQrCodeById(id);
+        return ResponseEntity.status(HttpStatus.OK).body(cartItemsDtoDto);
+    }
+
+    @GetMapping("/cart-detail/{orderId}")
+    public ResponseEntity<?> getCartByOrderId(@PathVariable Long orderId) {
+        OrderDto orderDto = cartService.getCartByOrderId(orderId);
+        return ResponseEntity.status(HttpStatus.OK).body(orderDto);
+    }
+
 }

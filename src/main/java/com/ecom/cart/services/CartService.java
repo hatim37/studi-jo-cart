@@ -175,6 +175,49 @@ public class CartService {
         } return false;
     }
 
+    public CartItemsDto getQrCodeById(Long id) {
+        CartItems cartItems = cartRepository.findById(id).get();
+        CartItemsDto cartItemsDto = new CartItemsDto();
+        cartItemsDto.setQrCode(cartItems.getQrCode());
+        return cartItemsDto;
+    }
+
+    public OrderDto getCartByOrderId(Long orderId) {
+        Order order = orderRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), orderId);
+        if (order.getId() == null) {
+            throw new UserNotFoundException("Service indisponible");
+        }
+
+        List<CartItemsDto> dtos = cartRepository.findByOrderId(orderId).stream()
+                .map(item -> {
+                    CartItemsDto dto = new CartItemsDto();
+                    dto.setId(item.getId());
+                    dto.setPrice(item.getPrice());
+                    dto.setQuantity(item.getQuantity());
+                    dto.setProductId(item.getProductId());
+                    dto.setOrderId(item.getOrderId());
+                    dto.setUserId(item.getUserId());
+                    dto.setQrCode(item.getQrCode());
+
+                    Product prod = productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), dto.getProductId());
+                    if (prod.getId() == null) {
+                        throw new UserNotFoundException("Service indisponible");
+                    }
+                    dto.setProductName(prod.getName());
+                    dto.setReturnedImg(prod.getImg());
+
+                    return dto;
+                })
+                .toList();
+
+        OrderDto orderDto = new OrderDto();
+        orderDto.setId(order.getId());
+        orderDto.setUserId(order.getUserId());
+        orderDto.setCartItems(dtos);
+
+        return orderDto;
+    }
+
 
 }
 
