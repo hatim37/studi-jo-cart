@@ -10,7 +10,7 @@ import com.ecom.cart.entity.CartItems;
 import com.ecom.cart.enums.OrderStatus;
 import com.ecom.cart.model.Order;
 import com.ecom.cart.model.Product;
-import com.ecom.cart.repository.CartIRepository;
+import com.ecom.cart.repository.CartRepository;
 import com.ecom.cart.response.UserNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,12 +26,12 @@ import java.util.Optional;
 @Service
 public class CartService {
 
-    private final CartIRepository cartRepository;
+    private final CartRepository cartRepository;
     private final OrderRestClient orderRestClient;
     private final TokenTechnicService tokenTechnicService;
     private final ProductRestClient productRestClient;
 
-    public CartService(CartIRepository cartRepository, OrderRestClient orderRestClient, TokenTechnicService tokenTechnicService, ProductRestClient productRestClient) {
+    public CartService(CartRepository cartRepository, OrderRestClient orderRestClient, TokenTechnicService tokenTechnicService, ProductRestClient productRestClient) {
         this.cartRepository = cartRepository;
         this.orderRestClient = orderRestClient;
         this.tokenTechnicService = tokenTechnicService;
@@ -164,7 +164,6 @@ public class CartService {
             activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * addProductInCartDto.getQuantity());
 
             return this.sendUpdateOrders(activeOrder);
-
         }
     }
 

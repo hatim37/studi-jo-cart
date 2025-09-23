@@ -20,11 +20,21 @@ public interface OrderRestClient {
     @PostMapping("/_internal/order-save")
     ResponseEntity<Void> orderSave(@RequestHeader("Authorization") String authorization, @RequestBody Order order);
 
+    @GetMapping("/_internal/orderFindById/{id}")
+    @CircuitBreaker(name="order", fallbackMethod = "getDefaultOrderFindById")
+    Order findById(@RequestHeader("Authorization") String authorization, @PathVariable Long id);
+
     default Order getDefaultFindByUserIdAndOrderStatus(String authorization, Map<String, String> mapOrder, Exception e) {
        Order order = new Order();
        order.setId(null);
        return order;
    }
+
+    default Order getDefaultOrderFindById(String authorization,Long id, Exception e) {
+        Order order = new Order();
+        order.setId(null);
+        return order;
+    }
 
 
 }
