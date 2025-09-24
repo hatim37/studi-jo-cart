@@ -43,7 +43,7 @@ import java.util.*;
 @Transactional
 public class QrCodeService {
 
-    private static final byte[] TEXT_PREFIX = "Billet valide pour le client : ".getBytes();
+    private static final String TEXT_PREFIX = "Billet valide pour le client : ";
     private final OrderRestClient orderRestClient;
     private final UserRestClient userRestClient;
     private final CartRepository cartRepository;
@@ -140,27 +140,22 @@ public class QrCodeService {
 
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec);
 
-        byte[] plaintext = (Arrays.toString(TEXT_PREFIX) + text).getBytes(StandardCharsets.UTF_8);
+        byte[] plaintext = (TEXT_PREFIX + text).getBytes(StandardCharsets.UTF_8);
         byte[] ciphertext = cipher.doFinal(plaintext);
 
-        // Concaténer + ciphertext
+        // Concaténer
         byte[] ivAndCipher = new byte[iv.length + ciphertext.length];
         System.arraycopy(iv, 0, ivAndCipher, 0, iv.length);
         System.arraycopy(ciphertext, 0, ivAndCipher, iv.length, ciphertext.length);
 
         return Base64.getEncoder().encodeToString(ivAndCipher);
-
-
-
     }
 
     public DecryptDto decryptKey(Long userId, Long orderId, String codeDecrypt) throws Exception {
-        // 🔑 Récupération de la SecretKey
+        //Récupération de la SecretKey
         SecretKeySpec secretKey = this.getKeyFormUserAndOrder(userId, orderId);
-
         // Décodage Base64
         byte[] ivAndCiphertext = Base64.getDecoder().decode(codeDecrypt);
-
         if (ivAndCiphertext.length < 17) {
             throw new IllegalArgumentException("Données chiffrées non valides");
         }
@@ -168,12 +163,10 @@ public class QrCodeService {
         // Extraire IV (16 octets) et ciphertext
         byte[] iv = Arrays.copyOfRange(ivAndCiphertext, 0, 16);
         byte[] ciphertext = Arrays.copyOfRange(ivAndCiphertext, 16, ivAndCiphertext.length);
-
         // Déchiffrement AES
         Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));
         byte[] decryptedBytes = cipher.doFinal(ciphertext);
-
         String result = new String(decryptedBytes, StandardCharsets.UTF_8);
 
         DecryptDto decryptDto = new DecryptDto();
@@ -183,7 +176,6 @@ public class QrCodeService {
 
     //Récupérer, déchiffrer et concaténer les 2 clés
     public SecretKeySpec getKeyFormUserAndOrder(Long userId, Long orderId) throws NoSuchAlgorithmException {
-
         //on récupère les clés
         User user = userRestClient.findUserById("Bearer " + this.tokenTechnicService.getTechnicalToken(), userId);
         if (user.getId() == null) {
@@ -194,7 +186,6 @@ public class QrCodeService {
         if (order.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
-
         // Décodage Base64 (vérifier format)
         byte[] userKey;
         byte[] orderKey;
@@ -204,12 +195,10 @@ public class QrCodeService {
         } catch (IllegalArgumentException iae) {
             throw new IllegalArgumentException("Invalid Base64 key in DB", iae);
         }
-
         // Concaténation
         byte[] combined = new byte[userKey.length + orderKey.length];
         System.arraycopy(userKey, 0, combined, 0, userKey.length);
         System.arraycopy(orderKey, 0, combined, userKey.length, orderKey.length);
-
         // Dérivation via SHA-256 -> 32 octets => AES-256
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         byte[] derived = sha.digest(combined);

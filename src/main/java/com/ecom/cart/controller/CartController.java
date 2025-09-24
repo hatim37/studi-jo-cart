@@ -2,10 +2,12 @@ package com.ecom.cart.controller;
 
 import com.ecom.cart.dto.*;
 import com.ecom.cart.services.CartService;
+import com.ecom.cart.services.QrCodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -14,9 +16,11 @@ import java.util.List;
 public class CartController {
 
     private final CartService cartService;
+    private final QrCodeService qrCodeService;
 
-    public CartController(CartService cartService) {
+    public CartController(CartService cartService, QrCodeService qrCodeService) {
         this.cartService = cartService;
+        this.qrCodeService = qrCodeService;
     }
 
     @PostMapping("/addCaddy/{userId}")
@@ -54,5 +58,16 @@ public class CartController {
         OrderDto orderDto = cartService.getCartByOrderId(orderId);
         return ResponseEntity.status(HttpStatus.OK).body(orderDto);
     }
+
+    @PostMapping("/decryptQrCode")
+    public ResponseEntity<QrCodeDto> decryptQrCode(@RequestParam("img") MultipartFile image) throws Exception {
+        return ResponseEntity.ok(this.qrCodeService.decryptQrCode(image));
+    }
+
+    @PostMapping("/decryptKeyInQrCode")
+    public ResponseEntity<DecryptDto> decryptKeyInQrCode(@RequestBody DecryptDto decryptDto) throws Exception {
+        return ResponseEntity.ok(this.qrCodeService.decryptKey(decryptDto.getUserId(), decryptDto.getOrderId(), decryptDto.getInputCode()));
+    }
+
 
 }

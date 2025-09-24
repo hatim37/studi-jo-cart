@@ -19,7 +19,6 @@ public class MicroServiceController {
 
     @PostMapping("/_internal/cartItems-qrCode")
     public void generateQrCode(@RequestBody Map<String, Long> qrCode){
-        log.info("Generate QR Code");
         this.qrCodeService.generateQrCode(qrCode.get("userId"), qrCode.get("orderId"));
     }
 
