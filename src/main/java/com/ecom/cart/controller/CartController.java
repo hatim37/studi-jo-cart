@@ -6,6 +6,7 @@ import com.ecom.cart.services.QrCodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -60,11 +61,13 @@ public class CartController {
     }
 
     @PostMapping("/decryptQrCode")
+    @PreAuthorize("hasAuthority('SCOPE_AGENT')")
     public ResponseEntity<QrCodeDto> decryptQrCode(@RequestParam("img") MultipartFile image) throws Exception {
         return ResponseEntity.ok(this.qrCodeService.decryptQrCode(image));
     }
 
     @PostMapping("/decryptKeyInQrCode")
+    @PreAuthorize("hasAuthority('SCOPE_AGENT')")
     public ResponseEntity<DecryptDto> decryptKeyInQrCode(@RequestBody DecryptDto decryptDto) throws Exception {
         return ResponseEntity.ok(this.qrCodeService.decryptKey(decryptDto.getUserId(), decryptDto.getOrderId(), decryptDto.getInputCode()));
     }
