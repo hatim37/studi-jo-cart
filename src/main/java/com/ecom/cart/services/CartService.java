@@ -119,6 +119,7 @@ public class CartService {
         if (activeOrder.getId() == null) {
             throw new UserNotFoundException("Service indisponible order");
         }
+
         Optional<CartItems> optionalCartItems = cartRepository.findByProductIdAndOrderIdAndUserId
                 (addProductInCartDto.getProductId(), activeOrder.getId(), addProductInCartDto.getUserId());
 
@@ -219,6 +220,9 @@ public class CartService {
     }
 
 
+    public List<CartItems> findByQrCodeIsNotNull() {
+        return cartRepository.findByQrCodeIsNotNull();
+    }
 }
 
 

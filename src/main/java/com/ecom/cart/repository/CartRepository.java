@@ -11,4 +11,6 @@ public interface CartRepository extends JpaRepository<CartItems, Long> {
     List<CartItems> findByOrderId(Long orderId);
 
     Optional<CartItems> findByProductIdAndOrderIdAndUserId(Long productId, Long orderId, Long userId);
+
+    List<CartItems> findByQrCodeIsNotNull();
 }
