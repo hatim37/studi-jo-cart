@@ -5,7 +5,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
-@FeignClient(name = "products-service", url = "${products.service.url}")
+@FeignClient(name = "products-service", url = "http://localhost:8091/api")
 public interface ProductRestClient {
 
     @GetMapping("/_internal/productFindById/{id}")

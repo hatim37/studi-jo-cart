@@ -16,7 +16,7 @@ public class JwtConfig {
         this.rsakeysConfig = rsakeysConfig;
     }
 
-    @Value("${SAS_JWK_URI}")
+    @Value("http://localhost:8091/api")
     private String jwtUri;
 
     private RsakeysConfig rsakeysConfig;

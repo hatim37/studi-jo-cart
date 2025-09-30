@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-@FeignClient(name = "orders-service", url = "${orders.service.url}")
+@FeignClient(name = "orders-service", url = "http://localhost:8091/api")
 public interface OrderRestClient {
 
 
