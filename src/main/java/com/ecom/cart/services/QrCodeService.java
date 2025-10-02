@@ -40,7 +40,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
 
-@Slf4j
 @Service
 @Transactional
 public class QrCodeService {
@@ -60,7 +59,7 @@ public class QrCodeService {
         this.productRestClient = productRestClient;
     }
 
-    public void generateQrCode(Long userId, Long orderId) {
+    /*public void generateQrCode(Long userId, Long orderId) {
         User user = this.userRestClient.findUserById(
                 "Bearer " + this.tokenTechnicService.getTechnicalToken(), userId
         );
@@ -145,7 +144,7 @@ public class QrCodeService {
         } catch (IOException | NotFoundException | ChecksumException | FormatException e) {
             throw new RuntimeException("Erreur lecture QR code", e);
         }
-    }
+    }*/
 
 
     public String encryptKey(Long userId, Long orderId, String text) throws Exception {
