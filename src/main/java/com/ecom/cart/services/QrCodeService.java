@@ -59,7 +59,7 @@ public class QrCodeService {
         this.productRestClient = productRestClient;
     }
 
-    /*public void generateQrCode(Long userId, Long orderId) {
+    public void generateQrCode(Long userId, Long orderId) {
         User user = this.userRestClient.findUserById(
                 "Bearer " + this.tokenTechnicService.getTechnicalToken(), userId
         );
@@ -94,13 +94,12 @@ public class QrCodeService {
                 QRCodeWriter qrCodeWriter = new QRCodeWriter();
                 BitMatrix bitMatrix = qrCodeWriter.encode(jsonString, BarcodeFormat.QR_CODE, 400, 400);
 
-                // Utilisation de try-with-resources pour le flux
                 try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
                     item.setQrCode(baos.toByteArray()); // en mémoire
                 }
 
-                // Sauvegarder dans la base
+                // Sauvegarde
                 cartRepository.save(item);
 
             } catch (Exception e) {
@@ -119,7 +118,7 @@ public class QrCodeService {
         try (InputStream is = imageQrCode.getInputStream()) {
             BufferedImage image = ImageIO.read(is);
             if (image == null) {
-                throw new IllegalArgumentException("Le fichier fourni n'est pas une image valide");
+                throw new IllegalArgumentException("Le fichier fourni n'est pas valide");
             }
 
             LuminanceSource source = new BufferedImageLuminanceSource(image);
@@ -127,7 +126,7 @@ public class QrCodeService {
             Reader reader = new MultiFormatReader();
             Result result = reader.decode(bitmap);
 
-            // Décoder le texte JSON avec Jackson
+           //décoder
             ObjectMapper mapper = new ObjectMapper();
             Map<String, String> qrMap = mapper.readValue(result.getText(), Map.class);
 
@@ -144,7 +143,7 @@ public class QrCodeService {
         } catch (IOException | NotFoundException | ChecksumException | FormatException e) {
             throw new RuntimeException("Erreur lecture QR code", e);
         }
-    }*/
+    }
 
 
     public String encryptKey(Long userId, Long orderId, String text) throws Exception {
@@ -204,7 +203,7 @@ public class QrCodeService {
         if (order.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
-        // Décodage Base64 (vérifier format)
+        // Décodage Base64
         byte[] userKey;
         byte[] orderKey;
         try {
@@ -217,7 +216,7 @@ public class QrCodeService {
         byte[] combined = new byte[userKey.length + orderKey.length];
         System.arraycopy(userKey, 0, combined, 0, userKey.length);
         System.arraycopy(orderKey, 0, combined, userKey.length, orderKey.length);
-        // Dérivation via SHA-256 -> 32 octets => AES-256
+        // Dérivation
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         byte[] derived = sha.digest(combined);
 

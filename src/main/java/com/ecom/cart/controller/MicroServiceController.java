@@ -23,10 +23,10 @@ public class MicroServiceController {
         this.cartService = cartService;
     }
 
-    /*@PostMapping("/_internal/cartItems-qrCode")
+    @PostMapping("/_internal/cartItems-qrCode")
     public void generateQrCode(@RequestBody Map<String, Long> qrCode){
         this.qrCodeService.generateQrCode(qrCode.get("userId"), qrCode.get("orderId"));
-    }*/
+    }
 
     @GetMapping("/_internal/allCartByQrCodeIsNotNull")
     public List<CartItems> findByQrCodeIsNotNull(){
