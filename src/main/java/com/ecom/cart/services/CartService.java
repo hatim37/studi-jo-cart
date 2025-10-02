@@ -45,11 +45,25 @@ public class CartService {
         }
 
         for (AddProductInCartDto dto : addProductInCartDto) {
+            //on vérifie si le produit est déjà dans le panier
+            Optional<CartItems> optionalCartItems = cartRepository.findByProductIdAndOrderIdAndUserId
+                    (dto.getProductId(), activeOrder.getId(), dto.getUserId());
+
+            if (optionalCartItems.isPresent()) {
+                CartItems cartItems = optionalCartItems.get();
+                cartItems.setQuantity(cartItems.getQuantity() + dto.getQuantity());
+                cartRepository.save(cartItems);
+
+                activeOrder.setTotalAmount(activeOrder.getTotalAmount() + cartItems.getPrice() * dto.getQuantity());
+                activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * dto.getQuantity());
+
+            } else {
 
             Product product = productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), dto.getProductId());
             if (product.getId() == null) {
                 throw new UserNotFoundException("Produit introuvable");
             }
+
             CartItems cartItems = new CartItems();
             cartItems.setOrderId(activeOrder.getId());
             cartItems.setProductId(dto.getProductId());
@@ -59,7 +73,7 @@ public class CartService {
 
             cartRepository.save(cartItems);
             activeOrder.setTotalAmount(activeOrder.getTotalAmount() + cartItems.getPrice() * dto.getQuantity());
-            activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * dto.getQuantity());
+            activeOrder.setAmount(activeOrder.getAmount() + cartItems.getPrice() * dto.getQuantity());}
         }
 
         return this.sendUpdateOrders(activeOrder);
