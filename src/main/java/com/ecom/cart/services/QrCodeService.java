@@ -12,6 +12,7 @@ import com.ecom.cart.model.Product;
 import com.ecom.cart.model.User;
 import com.ecom.cart.repository.CartRepository;
 import com.ecom.cart.response.UserNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.zxing.*;
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -32,6 +33,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -59,73 +61,90 @@ public class QrCodeService {
     }
 
     public void generateQrCode(Long userId, Long orderId) {
-        User user = this.userRestClient.findUserById("Bearer " + this.tokenTechnicService.getTechnicalToken(), userId);
+        User user = this.userRestClient.findUserById(
+                "Bearer " + this.tokenTechnicService.getTechnicalToken(), userId
+        );
         if (user.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
+
         List<CartItems> cartItems = cartRepository.findByOrderId(orderId);
-        cartItems.forEach(item->{
-            Product product = this.productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), item.getProductId());
+
+        cartItems.forEach(item -> {
+            Product product = this.productRestClient.findById(
+                    "Bearer " + this.tokenTechnicService.getTechnicalToken(), item.getProductId()
+            );
             if (product.getId() == null) {
                 throw new UserNotFoundException("Service indisponible");
             }
 
             try {
+                // Préparer les données du QR code
                 Map<String, String> qrCodeDataMap = Map.of(
-                        "commande",item.getOrderId().toString(),
+                        "commande", item.getOrderId().toString(),
                         "client", user.getId().toString(),
                         "Nom", user.getName(),
                         "Type de billet", product.getName(),
                         "Nombre de place", item.getQuantity().toString(),
-                        "Key", this.encryptKey(userId, orderId, user.getName())
+                        "Key", this.encryptKey(userId, orderId, user.getName()) // appel réel
                 );
 
                 String jsonString = new JSONObject(qrCodeDataMap).toString();
 
+                // Générer le QR code
                 QRCodeWriter qrCodeWriter = new QRCodeWriter();
-                BitMatrix bitMatrix = qrCodeWriter.encode(jsonString, BarcodeFormat.QR_CODE, 400, 400
-                );
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                MatrixToImageWriter.writeToStream(bitMatrix, "png", baos);
+                BitMatrix bitMatrix = qrCodeWriter.encode(jsonString, BarcodeFormat.QR_CODE, 400, 400);
 
-                item.setQrCode(baos.toByteArray());
+                // Utilisation de try-with-resources pour le flux
+                try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
+                    item.setQrCode(baos.toByteArray()); // en mémoire
+                }
 
+                // Sauvegarder dans la base
                 cartRepository.save(item);
 
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Erreur lors de la génération du QR code", e);
             }
         });
     }
 
-    public QrCodeDto decryptQrCode(MultipartFile imageQrCode) throws Exception {
-        try
-        {
-            BufferedImage image = ImageIO.read(imageQrCode.getInputStream());
+
+
+    public QrCodeDto decryptQrCode(MultipartFile imageQrCode) {
+        if (imageQrCode == null || imageQrCode.isEmpty()) {
+            throw new IllegalArgumentException("Le fichier QR code est vide ou null");
+        }
+
+        try (InputStream is = imageQrCode.getInputStream()) {
+            BufferedImage image = ImageIO.read(is);
+            if (image == null) {
+                throw new IllegalArgumentException("Le fichier fourni n'est pas une image valide");
+            }
+
             LuminanceSource source = new BufferedImageLuminanceSource(image);
             BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
             Reader reader = new MultiFormatReader();
             Result result = reader.decode(bitmap);
 
-            JSONObject obj = new JSONObject(result.getText());
-            Iterator<String> it = obj.keys();
+            // Décoder le texte JSON avec Jackson
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, String> qrMap = mapper.readValue(result.getText(), Map.class);
 
-            QrCodeDto qrCodeDto = new QrCodeDto();
-            qrCodeDto.setCode((String) obj.get("Key"));
-            qrCodeDto.setName((String) obj.get("Nom"));
-            qrCodeDto.setType((String) obj.get("Type de billet"));
-            qrCodeDto.setQuantity((String) obj.get("Nombre de place"));
-            qrCodeDto.setCommande((String) obj.get("commande"));
-            qrCodeDto.setClient((String) obj.get("client"));
-            return qrCodeDto;
+            QrCodeDto dto = new QrCodeDto();
+            dto.setCode(qrMap.getOrDefault("Key", ""));
+            dto.setName(qrMap.getOrDefault("Nom", ""));
+            dto.setType(qrMap.getOrDefault("Type de billet", ""));
+            dto.setQuantity(qrMap.getOrDefault("Nombre de place", ""));
+            dto.setCommande(qrMap.getOrDefault("commande", ""));
+            dto.setClient(qrMap.getOrDefault("client", ""));
+
+            return dto;
+
+        } catch (IOException | NotFoundException | ChecksumException | FormatException e) {
+            throw new RuntimeException("Erreur lecture QR code", e);
         }
-        catch(IOException ex)
-        {
-            System.out.println("I/O Error: " + ex.getMessage());
-        } catch (ChecksumException | NotFoundException | FormatException | JSONException e) {
-            throw new RuntimeException(e);
-        }
-        return null;
     }
 
 

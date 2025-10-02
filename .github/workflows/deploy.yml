@@ -37,6 +37,7 @@ jobs:
             --region "$REGION" \
             --allow-unauthenticated \
             --service-account "$SERVICE_ACCOUNT_EMAIL" \
+            --update-secrets RSA_PUBLIC_KEY=SECRET_KEY_PUBLIC:latest \
             --add-cloudsql-instances "$CLOUDSQL_INSTANCE" \
             --timeout=300
 
