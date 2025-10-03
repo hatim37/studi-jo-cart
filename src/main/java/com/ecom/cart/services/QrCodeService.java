@@ -20,9 +20,6 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.transaction.Transactional;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.configurationprocessor.json.JSONException;
-import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,6 +47,7 @@ public class QrCodeService {
     private final CartRepository cartRepository;
     private final TokenTechnicService tokenTechnicService;
     private final ProductRestClient productRestClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public QrCodeService(OrderRestClient orderRestClient, UserRestClient userRestClient, CartRepository cartRepository, TokenTechnicService tokenTechnicService, ProductRestClient productRestClient) {
         this.orderRestClient = orderRestClient;
@@ -88,7 +86,7 @@ public class QrCodeService {
                         "Key", this.encryptKey(userId, orderId, user.getName()) // appel réel
                 );
 
-                String jsonString = new JSONObject(qrCodeDataMap).toString();
+                String jsonString = objectMapper.writeValueAsString(qrCodeDataMap);
 
                 // Générer le QR code
                 QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -96,7 +94,7 @@ public class QrCodeService {
 
                 try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                     MatrixToImageWriter.writeToStream(bitMatrix, "PNG", baos);
-                    item.setQrCode(baos.toByteArray()); // en mémoire
+                    item.setQrCode(baos.toByteArray());
                 }
 
                 // Sauvegarde
@@ -127,20 +125,19 @@ public class QrCodeService {
             Result result = reader.decode(bitmap);
 
            //décoder
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, String> qrMap = mapper.readValue(result.getText(), Map.class);
+            Map<String, String> dataMap = objectMapper.readValue(result.getText(), Map.class);
 
-            QrCodeDto dto = new QrCodeDto();
-            dto.setCode(qrMap.getOrDefault("Key", ""));
-            dto.setName(qrMap.getOrDefault("Nom", ""));
-            dto.setType(qrMap.getOrDefault("Type de billet", ""));
-            dto.setQuantity(qrMap.getOrDefault("Nombre de place", ""));
-            dto.setCommande(qrMap.getOrDefault("commande", ""));
-            dto.setClient(qrMap.getOrDefault("client", ""));
+            QrCodeDto qrCodeDto = new QrCodeDto();
+            qrCodeDto.setCode(dataMap.getOrDefault("Key", ""));
+            qrCodeDto.setName(dataMap.getOrDefault("Nom", ""));
+            qrCodeDto.setType(dataMap.getOrDefault("Type de billet", ""));
+            qrCodeDto.setQuantity(dataMap.getOrDefault("Nombre de place", ""));
+            qrCodeDto.setCommande(dataMap.getOrDefault("commande", ""));
+            qrCodeDto.setClient(dataMap.getOrDefault("client", ""));
 
-            return dto;
+            return qrCodeDto;
 
-        } catch (IOException | NotFoundException | ChecksumException | FormatException e) {
+        } catch (Exception e) {
             throw new RuntimeException("Erreur lecture QR code", e);
         }
     }
