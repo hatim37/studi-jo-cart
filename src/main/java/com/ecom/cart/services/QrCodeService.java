@@ -20,6 +20,7 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,7 +37,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
-
+@Slf4j
 @Service
 @Transactional
 public class QrCodeService {
@@ -191,24 +192,31 @@ public class QrCodeService {
     //Récupérer, déchiffrer et concaténer les 2 clés
     public SecretKeySpec getKeyFormUserAndOrder(Long userId, Long orderId) throws NoSuchAlgorithmException {
         //on récupère les clés
+        log.info("etape1");
         User user = userRestClient.findUserById("Bearer " + this.tokenTechnicService.getTechnicalToken(), userId);
+        log.info(user.getName());
         if (user.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
-
+        log.info("etape2");
         Order order = orderRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(),orderId);
+        log.info(order.getId().toString());
         if (order.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
+        log.info("etape3");
         // Décodage Base64
         byte[] userKey;
         byte[] orderKey;
         try {
+            log.info("try");
             userKey = Base64.getDecoder().decode(user.getSecretKey());
+
             orderKey = Base64.getDecoder().decode(order.getSecretKey());
         } catch (IllegalArgumentException iae) {
             throw new IllegalArgumentException("Invalid Base64 key in DB", iae);
         }
+        log.info("etape4");
         // Concaténation
         byte[] combined = new byte[userKey.length + orderKey.length];
         System.arraycopy(userKey, 0, combined, 0, userKey.length);
@@ -216,7 +224,7 @@ public class QrCodeService {
         // Dérivation
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         byte[] derived = sha.digest(combined);
-
+        log.info("etape5");
         return new SecretKeySpec(derived, "AES"); // 32 bytes -> AES-256
     }
 
