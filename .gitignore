@@ -33,10 +33,3 @@ build/
 .vscode/
 
 # Fichiers d'env
-
-
-# Secrets/credentials
-src/main/resources/certs/keyPublic-prod.pem
-/*.key
-/*.pem
-/*.crt
