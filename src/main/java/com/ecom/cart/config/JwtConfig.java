@@ -16,7 +16,7 @@ public class JwtConfig {
         this.rsakeysConfig = rsakeysConfig;
     }
 
-    @Value("${SAS_JWK_URI}")
+    @Value("${sas.jwk.uri}")
     private String jwtUri;
 
     private RsakeysConfig rsakeysConfig;

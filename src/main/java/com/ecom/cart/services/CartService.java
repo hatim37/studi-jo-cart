@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -89,12 +90,10 @@ public class CartService {
     }
 
     public OrderDto getCartByUserId(Long userId) {
-        log.info("userId = " + userId+" demande cart");
         Order activeOrder = this.orderRestClient.findByUserIdAndOrderStatus("Bearer " + this.tokenTechnicService.getTechnicalToken(), Map.of("userId", String.valueOf(userId), "orderStatus", String.valueOf(OrderStatus.EnCours)));
         if (activeOrder.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
-        log.info("retour activeOrder = " + activeOrder);
         List<CartItemsDto> dtos = cartRepository.findByOrderId(activeOrder.getId()).stream()
                 .map(item -> {
                     CartItemsDto dto = new CartItemsDto();
@@ -183,12 +182,23 @@ public class CartService {
         }
     }
 
-    public boolean deleteCartById(Long id) {
-        Optional<CartItems> cartItems = cartRepository.findById(id);
+    @Transactional
+    public boolean deleteCartById(Long cartId) {
+        Optional<CartItems> cartItems = cartRepository.findById(cartId);
         if (cartItems.isPresent()) {
-            cartRepository.deleteById(id);
+            Long orderId = cartItems.get().getOrderId();
+
+            Order activeOrder = orderRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), orderId);
+            Long valueCartItems = cartItems.get().getQuantity() * cartItems.get().getPrice();
+
+            activeOrder.setTotalAmount(activeOrder.getTotalAmount() - valueCartItems);
+            activeOrder.setAmount(activeOrder.getAmount() - valueCartItems);
+
+            this.sendUpdateOrders(activeOrder);
+            cartRepository.deleteById(cartId);
             return true;
-        } return false;
+        }
+        return false;
     }
 
     public CartItemsDto getQrCodeById(Long id) {

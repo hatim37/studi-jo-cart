@@ -63,13 +63,13 @@ public class CartController {
     @PostMapping("/decryptQrCode")
     @PreAuthorize("hasAnyAuthority('SCOPE_AGENT', 'SCOPE_ADMIN')")
     public ResponseEntity<QrCodeDto> decryptQrCode(@RequestParam("img") MultipartFile image) throws Exception {
-        return ResponseEntity.ok(this.qrCodeService.decryptQrCode(image));
+        return ResponseEntity.ok(this.qrCodeService.decryptQrCode(image).getBody());
     }
 
     @PostMapping("/decryptKeyInQrCode")
     @PreAuthorize("hasAnyAuthority('SCOPE_AGENT', 'SCOPE_ADMIN')")
     public ResponseEntity<DecryptDto> decryptKeyInQrCode(@RequestBody DecryptDto decryptDto) throws Exception {
-        return ResponseEntity.ok(this.qrCodeService.decryptKey(decryptDto.getUserId(), decryptDto.getOrderId(), decryptDto.getInputCode()));
+        return ResponseEntity.ok(this.qrCodeService.decryptKey(decryptDto.getUserId(), decryptDto.getOrderId(), decryptDto.getInputCode()).getBody());
     }
 
 

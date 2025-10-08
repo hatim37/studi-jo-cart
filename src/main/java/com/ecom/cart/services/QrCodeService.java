@@ -1,6 +1,5 @@
 package com.ecom.cart.services;
 
-
 import com.ecom.cart.clients.OrderRestClient;
 import com.ecom.cart.clients.ProductRestClient;
 import com.ecom.cart.clients.UserRestClient;
@@ -21,6 +20,7 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeWriter;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,7 +37,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
-@Slf4j
+
 @Service
 @Transactional
 public class QrCodeService {
@@ -59,9 +59,7 @@ public class QrCodeService {
     }
 
     public void generateQrCode(Long userId, Long orderId) {
-        User user = this.userRestClient.findUserById(
-                "Bearer " + this.tokenTechnicService.getTechnicalToken(), userId
-        );
+        User user = this.userRestClient.findUserById("Bearer " + this.tokenTechnicService.getTechnicalToken(), userId);
         if (user.getId() == null) {
             throw new UserNotFoundException("Service indisponible");
         }
@@ -69,9 +67,7 @@ public class QrCodeService {
         List<CartItems> cartItems = cartRepository.findByOrderId(orderId);
 
         cartItems.forEach(item -> {
-            Product product = this.productRestClient.findById(
-                    "Bearer " + this.tokenTechnicService.getTechnicalToken(), item.getProductId()
-            );
+            Product product = this.productRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), item.getProductId());
             if (product.getId() == null) {
                 throw new UserNotFoundException("Service indisponible");
             }
@@ -107,23 +103,27 @@ public class QrCodeService {
         });
     }
 
-
-
-    public QrCodeDto decryptQrCode(MultipartFile imageQrCode) {
+    public ResponseEntity<QrCodeDto> decryptQrCode(MultipartFile imageQrCode) {
         if (imageQrCode == null || imageQrCode.isEmpty()) {
-            throw new IllegalArgumentException("Le fichier QR code est vide ou null");
+            throw new UserNotFoundException("Le fichier QR code est vide ou null");
         }
 
         try (InputStream is = imageQrCode.getInputStream()) {
             BufferedImage image = ImageIO.read(is);
             if (image == null) {
-                throw new IllegalArgumentException("Le fichier fourni n'est pas valide");
+                throw new UserNotFoundException("Le fichier fourni n'est pas valide");
             }
 
             LuminanceSource source = new BufferedImageLuminanceSource(image);
             BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
             Reader reader = new MultiFormatReader();
-            Result result = reader.decode(bitmap);
+
+            Result result;
+            try {
+                result = reader.decode(bitmap);
+            } catch (com.google.zxing.NotFoundException e) {
+                throw new UserNotFoundException("Le fichier ne contient pas de QR code");
+            }
 
            //décoder
             Map<String, String> dataMap = objectMapper.readValue(result.getText(), Map.class);
@@ -136,7 +136,7 @@ public class QrCodeService {
             qrCodeDto.setCommande(dataMap.getOrDefault("commande", ""));
             qrCodeDto.setClient(dataMap.getOrDefault("client", ""));
 
-            return qrCodeDto;
+            return ResponseEntity.ok(qrCodeDto);
 
         } catch (Exception e) {
             throw new RuntimeException("Erreur lecture QR code", e);
@@ -166,57 +166,64 @@ public class QrCodeService {
         return Base64.getEncoder().encodeToString(ivAndCipher);
     }
 
-    public DecryptDto decryptKey(Long userId, Long orderId, String codeDecrypt) throws Exception {
+    public ResponseEntity<DecryptDto> decryptKey(Long userId, Long orderId, String codeDecrypt) throws Exception {
+
         //Récupération de la SecretKey
         SecretKeySpec secretKey = this.getKeyFormUserAndOrder(userId, orderId);
+        if (secretKey == null) {
+            throw new UserNotFoundException("Clé de sécurité introuvable pour cet utilisateur ou cette commande");
+        }
+
         // Décodage Base64
         byte[] ivAndCiphertext = Base64.getDecoder().decode(codeDecrypt);
         if (ivAndCiphertext.length < 17) {
-            throw new IllegalArgumentException("Données chiffrées non valides");
+            throw new UserNotFoundException("Données chiffrées non valides");
         }
-
         // Extraire IV (16 octets) et ciphertext
         byte[] iv = Arrays.copyOfRange(ivAndCiphertext, 0, 16);
         byte[] ciphertext = Arrays.copyOfRange(ivAndCiphertext, 16, ivAndCiphertext.length);
         // Déchiffrement AES
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));
-        byte[] decryptedBytes = cipher.doFinal(ciphertext);
-        String result = new String(decryptedBytes, StandardCharsets.UTF_8);
+        try{
+            Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));
+            byte[] decryptedBytes = cipher.doFinal(ciphertext);
+            String result = new String(decryptedBytes, StandardCharsets.UTF_8);
+            DecryptDto decryptDto = new DecryptDto();
+            decryptDto.setOutputCode(result);
 
-        DecryptDto decryptDto = new DecryptDto();
-        decryptDto.setOutputCode(result);
-        return decryptDto;
+            return ResponseEntity.ok(decryptDto);
+        }catch (Exception e) {
+            throw new UserNotFoundException("Code de sécurité invalide");
+        }
     }
 
     //Récupérer, déchiffrer et concaténer les 2 clés
     public SecretKeySpec getKeyFormUserAndOrder(Long userId, Long orderId) throws NoSuchAlgorithmException {
         //on récupère les clés
-        log.info("etape1");
         User user = userRestClient.findUserById("Bearer " + this.tokenTechnicService.getTechnicalToken(), userId);
-        log.info(user.getName());
-        if (user.getId() == null) {
-            throw new UserNotFoundException("Service indisponible");
+        if (user == null || user.getId() == null) {
+            throw new UserNotFoundException("Utilisateur introuvable ou service indisponible");
         }
-        log.info("etape2");
-        Order order = orderRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(),orderId);
-        log.info(order.getId().toString());
-        if (order.getId() == null) {
-            throw new UserNotFoundException("Service indisponible");
+
+        Order order = orderRestClient.findById("Bearer " + this.tokenTechnicService.getTechnicalToken(), orderId);
+        if (order == null || order.getId() == null) {
+            throw new UserNotFoundException("N° de commande introuvable ou service indisponible");
         }
-        log.info("etape3");
+
+        if (user.getSecretKey() == null || order.getSecretKey() == null) {
+            throw new UserNotFoundException("Clé de sécurité manquante");
+        }
+
         // Décodage Base64
         byte[] userKey;
         byte[] orderKey;
         try {
-            log.info("try");
             userKey = Base64.getDecoder().decode(user.getSecretKey());
-
             orderKey = Base64.getDecoder().decode(order.getSecretKey());
         } catch (IllegalArgumentException iae) {
-            throw new IllegalArgumentException("Invalid Base64 key in DB", iae);
+            throw new UserNotFoundException("Clés de sécurité invalides");
         }
-        log.info("etape4");
+
         // Concaténation
         byte[] combined = new byte[userKey.length + orderKey.length];
         System.arraycopy(userKey, 0, combined, 0, userKey.length);
@@ -224,8 +231,8 @@ public class QrCodeService {
         // Dérivation
         MessageDigest sha = MessageDigest.getInstance("SHA-256");
         byte[] derived = sha.digest(combined);
-        log.info("etape5");
-        return new SecretKeySpec(derived, "AES"); // 32 bytes -> AES-256
+
+        return new SecretKeySpec(derived, "AES");
     }
 
 

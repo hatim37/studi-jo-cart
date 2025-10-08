@@ -13,9 +13,9 @@ import java.util.Base64;
 public class TokenTechnicService {
 
     private final SecurityRestClient securityRestClient;
-    @Value("${CLIENT_ID}")
+    @Value("${client.id}")
     private  String clientId;
-    @Value("${CLIENT_SECRET}")
+    @Value("${client.secret}")
     private  String clientSecret;
 
     public TokenTechnicService(SecurityRestClient securityRestClient) {
