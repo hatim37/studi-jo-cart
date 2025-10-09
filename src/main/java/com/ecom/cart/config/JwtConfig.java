@@ -18,7 +18,6 @@ public class JwtConfig {
 
     @Value("${sas.jwk.uri}")
     private String jwtUri;
-
     private RsakeysConfig rsakeysConfig;
 
     @Bean
@@ -29,7 +28,6 @@ public class JwtConfig {
     @Bean
     @Qualifier("userJwtDecoder")
     public JwtDecoder UserjwtDecoder() {
-
         return NimbusJwtDecoder.withPublicKey(rsakeysConfig.publicKey()).build();
     }
 

@@ -16,7 +16,6 @@ public interface UserRestClient {
     @CircuitBreaker(name="users", fallbackMethod = "getDefaultUser")
     User findUserById(@RequestHeader("Authorization") String authorization,@PathVariable Long id);
 
-
    default User getDefaultUser(String authorization,Long id, Exception e) {
        User user = new User();
        user.setId(null);

@@ -11,8 +11,6 @@ import java.util.Map;
 @FeignClient(name = "orders-service", url = "${orders.service.url}")
 public interface OrderRestClient {
 
-
-
     @PostMapping("/_internal/orderFindUserOrderStatus")
     @CircuitBreaker(name="order", fallbackMethod = "getDefaultFindByUserIdAndOrderStatus")
     Order findByUserIdAndOrderStatus(@RequestHeader("Authorization") String authorization, @RequestBody Map<String, String> mapOrder);

@@ -14,7 +14,6 @@ public interface SecurityRestClient {
     @PostMapping(value="/oauth2/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     @CircuitBreaker(name="tokenTechnic", fallbackMethod = "getDefaultToken")
     TokenTechnicDto getTokenTechnic(@RequestHeader("Authorization") String authorization, @RequestBody String formBody);
-
     default TokenTechnicDto getDefaultToken(String authorization, String formBody, Exception e) {
         return new TokenTechnicDto(null, null, 0L, null);
     }

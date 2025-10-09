@@ -18,5 +18,4 @@ public interface ProductRestClient {
         product.setName("non trouvé");
         return product;
     }
-
 }

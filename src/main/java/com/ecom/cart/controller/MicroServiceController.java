@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-@Slf4j
 @RestController
 public class MicroServiceController {
     private final QrCodeService qrCodeService;
